@@ -2,13 +2,16 @@ import { createSharedEventArgs } from "events/extra";
 import { addOnceEventListener, passiveSupported } from "utils/helper";
 
 let sliderHandleId = 0;
-const sliderHandlesById = {};
+const sliderHandlesById: {
+  onSliderMouseDown?: (e) => void
+  onSliderClick?: (e) => void,
+} = {};
 
 export function registerSliderEvents(
   el: HTMLElement,
   dotnetHelper: DotNet.DotNetObject
 ) {
-  sliderHandlesById[sliderHandleId] = onSliderMouseDown;
+  sliderHandlesById[sliderHandleId] = { onSliderMouseDown, onSliderClick }
 
   const app = document.querySelector("[data-app]");
 
@@ -18,11 +21,16 @@ export function registerSliderEvents(
 
   const mouseMoveOptions = passiveSupported ? { passive: true } : false;
 
+  el.addEventListener('click', onSliderClick);
   el.addEventListener("mousedown", onSliderMouseDown);
   el.addEventListener("touchstart", onSliderMouseDown);
 
   return sliderHandleId++;
 
+  async function onSliderClick(e: MouseEvent) {
+    await dotnetHelper.invokeMethodAsync("OnClickInternal", createSharedEventArgs("mouse", e));
+  }
+  
   async function onSliderMouseDown(e: MouseEvent | TouchEvent) {
     const isTouchEvent = "touches" in e;
 
@@ -59,9 +67,9 @@ export function registerSliderEvents(
     app.removeEventListener("touchmove", onMouseMove, mouseMoveOptions as any);
     app.removeEventListener("mousemove", onMouseMove, mouseMoveOptions as any);
 
-    await dotnetHelper.invokeMethodAsync("OnMouseUpInternal");
+    await dotnetHelper.invokeMethodAsync("OnMouseUpInternal", "touches" in e);
   }
-
+  
   async function onMouseMove(e: MouseEvent | TouchEvent) {
     const isTouchEvent = "touches" in e;
     const payload = {
@@ -76,9 +84,10 @@ export function registerSliderEvents(
 
 export function unregisterSliderEvents(el: HTMLElement, id: number) {
   if (el) {
-    const onSliderMouseDown = sliderHandlesById[id];
+    const { onSliderMouseDown, onSliderClick } = sliderHandlesById[id];
     el.removeEventListener("mousedown", onSliderMouseDown);
     el.removeEventListener("touchstart", onSliderMouseDown);
+    el.removeEventListener("click", onSliderClick);
 
     delete sliderHandlesById[id];
   }

@@ -26,10 +26,21 @@ public class SliderInteropHandle<TValue, TNumeric> where TNumeric : struct, ICom
         => _slider.HandleOnTouchStartAsync(args);
 
     [JSInvokable]
-    public Task OnMouseUpInternal()
-        => _slider.HandleOnSliderEndSwiping();
+    public Task OnMouseUpInternal(bool isTouch)
+    {
+        Console.Out.WriteLine("[SliderInteropHandle] " + (isTouch ? "touchend" : "mouseup"));
+        return _slider.HandleOnSliderEndSwiping(isTouch);
+    }
+
+    [JSInvokable]
+    public Task OnClickInternal(MouseEventArgs args)
+        => _slider.HandleOnSliderClickAsync(args);
 
     [JSInvokable]
     public Task OnMouseMoveInternal(MouseEventArgs args)
         => _throttleTask.RunAsync(() => _slider.HandleOnMouseMoveAsync(args));
+
+    [JSInvokable]
+    public Task OnThumbContainerFocusInternal(int index)
+        => _slider.HandleOnFocusAsync(index, new FocusEventArgs());
 }

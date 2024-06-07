@@ -54,6 +54,8 @@ public partial class MRangeSlider<TValue> : MSliderBase<IList<TValue>, TValue> w
 
     public override async Task HandleOnSliderClickAsync(MouseEventArgs args)
     {
+        Console.Out.WriteLine("click, IsActive: " + IsActive + ", NoClick: " + NoClick);
+        
         if (!IsActive)
         {
             if (NoClick)
@@ -106,12 +108,6 @@ public partial class MRangeSlider<TValue> : MSliderBase<IList<TValue>, TValue> w
             }
 
             val = new List<double> { val[1], val[0] };
-        }
-
-        if (val is not null)
-        {
-            
-            Console.Out.WriteLine(string.Join(',', val));
         }
 
         UpdateInternalValue(val.Select(item => (TValue)Convert.ChangeType(item, typeof(TValue))).ToList(),
@@ -168,6 +164,7 @@ public partial class MRangeSlider<TValue> : MSliderBase<IList<TValue>, TValue> w
 
     public override Task HandleOnFocusAsync(int index, FocusEventArgs args)
     {
+        Console.Out.WriteLine("[MRangeSlider] HandleOnFocusAsync");
         ActiveThumb = index;
         _value = DoubleInternalValue;
         return base.HandleOnFocusAsync(index,args);

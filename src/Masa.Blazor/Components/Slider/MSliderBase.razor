@@ -35,13 +35,12 @@
     private RenderFragment GenSlider() => __builder =>
     {
         var horizontal = !Vertical;
-        var focus = IsFocused;
+        var focused = IsFocused;
         var active = IsActive;
         var disabled = IsDisabled;
         var @readonly = IsReadonly;
 
-        <div class="@_modifierBuilder.Add(horizontal, Vertical, focus, active, disabled, @readonly).AddTheme(IsDark, IndependentTheme)"
-             @onclick="HandleOnSliderClickAsync"
+        <div class="@_modifierBuilder.Add(horizontal, Vertical, focused, active, disabled, @readonly).AddTheme(IsDark, IndependentTheme)"
              @ref="@SliderElement">
             @GenInput()
             @GenTrackContainer()
@@ -108,17 +107,18 @@
     protected RenderFragment GenThumbContainerCore(int index, ElementReferenceWrapper elRefWrapper) => __builder =>
     {
         var active = IsThumbActive(index);
-        var focus = IsThumbFocus(index);
+        var focused = IsThumbFocus(index);
         var showLabel = ShowThumbLabel;
 
-        <div class="@_thumbContainerModifierBuilder.Add(active, focus, showLabel).AddTextColor(ComputedThumbColor)"
+        <div class="@_thumbContainerModifierBuilder.Add(active, focused, showLabel).AddTextColor(ComputedThumbColor)"
              style="@GetThumbContainerStyles(index)"
              @ref="@elRefWrapper.Value"
              @attributes="@ThumbAttrs"
              @onfocus="@(e => HandleOnFocusAsync(index, e))"
              @onblur="@(e => HandleOnBlurAsync(index, e))"
              @onkeydown="@HandleOnKeyDownAsync"
-             @onkeydown:preventDefault>
+             @onkeydown:preventDefault
+             @key="@index">
 
             @GenThumb()
 
@@ -131,9 +131,7 @@
 
     private RenderFragment GenThumb() => __builder =>
     {
-        <div class="@GetClass(Block.Element("thumb").Name, CssClassUtils.GetBackgroundColor(ComputedThumbColor))"
-             style="@(StyleBuilder.Create().AddBackgroundColor(ComputedThumbColor))">
-        </div>
+        <div class="@Block.Element("thumb").Name"></div>
     };
 
     private RenderFragment GenThumbLabel(int index) => __builder =>
@@ -223,7 +221,7 @@
         return new StyleBuilder()
             .AddHeight(ThumbSize)
             .AddWidth(ThumbSize)
-            .Add(transform, $"{transform}")
+            .Add("transform", transform)
             .AddBackgroundColor(ComputedThumbColor)
             .Build();
     }

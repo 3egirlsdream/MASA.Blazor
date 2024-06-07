@@ -6,15 +6,13 @@
 /// <typeparam name="TValue">Numeric type or a list of numeric type</typeparam>
 /// <typeparam name="TNumeric">Numeric type</typeparam>
 #if NET6_0
-public partial class MSliderBase<TValue, TNumeric> : MInput<TValue>, IOutsideClickJsCallback
+public partial class MSliderBase<TValue, TNumeric> : MInput<TValue>
 #else
-public partial class MSliderBase<TValue, TNumeric> : MInput<TValue>, IOutsideClickJsCallback, IAsyncDisposable
+public partial class MSliderBase<TValue, TNumeric> : MInput<TValue>
     where TNumeric : struct, IComparable<TNumeric>
 #endif
 {
     [Inject] public MasaBlazor MasaBlazor { get; set; } = null!;
-
-    [Inject] private OutsideClickJSModule OutsideClickJSModule { get; set; } = null!;
 
     [Parameter] public bool Vertical { get; set; }
 
@@ -195,7 +193,8 @@ public partial class MSliderBase<TValue, TNumeric> : MInput<TValue>, IOutsideCli
                 return ThumbColor;
             }
 
-            return string.IsNullOrEmpty(ValidationState) ? ComputedColor : ValidationState;
+            var validationState = ValidationState;
+            return string.IsNullOrEmpty(validationState) ? ComputedColor : validationState;
         }
     }
 
@@ -248,8 +247,6 @@ public partial class MSliderBase<TValue, TNumeric> : MInput<TValue>, IOutsideCli
 
         if (firstRender)
         {
-            await OutsideClickJSModule.InitializeAsync(this, SliderElement.GetSelector());
-
             _interopHandleReference =
                 DotNetObjectReference.Create<object>(new SliderInteropHandle<TValue, TNumeric>(this));
             _id = await Js.InvokeAsync<long>(JsInteropConstants.RegisterSliderEvents, SliderElement,
@@ -270,10 +267,16 @@ public partial class MSliderBase<TValue, TNumeric> : MInput<TValue>, IOutsideCli
     }
 
     public virtual async Task HandleOnTouchStartAsync(ExTouchEventArgs args)
-        => await HandleOnSliderStartSwiping(args.Target!, args.Touches[0].ClientX, args.Touches[0].ClientY);
+    {
+        Console.Out.WriteLine("TouchStart");
+        await HandleOnSliderStartSwiping(args.Target!, args.Touches[0].ClientX, args.Touches[0].ClientY);
+    }
 
     public virtual async Task HandleOnSliderMouseDownAsync(ExMouseEventArgs args)
-        => await HandleOnSliderStartSwiping(args.Target!, args.ClientX, args.ClientY);
+    {
+        Console.Out.WriteLine("MouseDown");
+        await HandleOnSliderStartSwiping(args.Target!, args.ClientX, args.ClientY);
+    }
 
     protected async Task HandleOnSliderStartSwiping(EventTarget target, double clientX, double clientY)
     {
@@ -304,8 +307,10 @@ public partial class MSliderBase<TValue, TNumeric> : MInput<TValue>, IOutsideCli
         await OnStart.InvokeAsync(InternalValue);
     }
 
-    public async Task HandleOnSliderEndSwiping()
+    public async Task HandleOnSliderEndSwiping(bool isTouch)
     {
+        Console.Out.WriteLine(isTouch ? "TouchEnd" : "MouseUp", EqualityComparer<TValue>.Default.Equals(_oldValue, InternalValue));
+        
         _mouseCancellationTokenSource?.Cancel();
         ThumbPressed = false;
 
@@ -396,19 +401,16 @@ public partial class MSliderBase<TValue, TNumeric> : MInput<TValue>, IOutsideCli
         return IsFocused;
     }
 
-    private bool IndependentTheme =>
-        (IsDirtyParameter(nameof(Dark)) && Dark) || (IsDirtyParameter(nameof(Light)) && Light);
-
 #if NET8_0_OR_GREATER
-        protected override void OnParametersSet()
-        {
-            base.OnParametersSet();
+    protected override void OnParametersSet()
+    {
+        base.OnParametersSet();
 
-            if (MasaBlazor.IsSsr && !IndependentTheme)
-            {
-                CascadingIsDark = MasaBlazor.Theme.Dark;
-            }
+        if (MasaBlazor.IsSsr && !IndependentTheme)
+        {
+            CascadingIsDark = MasaBlazor.Theme.Dark;
         }
+    }
 #endif
 
     protected static readonly Block Block = new("m-slider");
@@ -446,6 +448,8 @@ public partial class MSliderBase<TValue, TNumeric> : MInput<TValue>, IOutsideCli
 
     public virtual async Task HandleOnFocusAsync(int index, FocusEventArgs args)
     {
+        Console.Out.WriteLine($"Focus {index}");
+        
         IsFocused = true;
 
         if (OnFocus.HasDelegate)
@@ -456,6 +460,8 @@ public partial class MSliderBase<TValue, TNumeric> : MInput<TValue>, IOutsideCli
 
     public virtual async Task HandleOnBlurAsync(int index, FocusEventArgs args)
     {
+        Console.Out.WriteLine($"Blur {index}");
+        
         IsFocused = false;
 
         if (OnBlur.HasDelegate)
@@ -538,17 +544,6 @@ public partial class MSliderBase<TValue, TNumeric> : MInput<TValue>, IOutsideCli
         }
 
         return value;
-    }
-
-    public Task HandleOnOutsideClickAsync()
-    {
-        NextTick(async () =>
-        {
-            await HandleOnBlurAsync(0, new FocusEventArgs());
-            StateHasChanged();
-        });
-
-        return Task.CompletedTask;
     }
 
     protected override async ValueTask DisposeAsyncCore()
